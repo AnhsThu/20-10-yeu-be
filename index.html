@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Love U In Every Universe ❤️❤️</title>
+    <link rel="icon" href="./style/images/Anh (1).jpg" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Playfair+Display:wght@600;800&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style/style.css">
+    <link rel="stylesheet" href="./style/castle.css">
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.152.2/build/three.module.js",
+        "three/addons/controls/OrbitControls.js": "https://unpkg.com/three@0.152.2/examples/jsm/controls/OrbitControls.js",
+        "three/examples/jsm/loaders/FontLoader.js": "https://unpkg.com/three@0.152.2/examples/jsm/loaders/FontLoader.js",
+        "three/examples/jsm/geometries/TextGeometry.js": "https://unpkg.com/three@0.152.2/examples/jsm/geometries/TextGeometry.js"
+      }
+    }
+    </script>
+</head>
+<body>
+  <div id="container"></div>
+  <div id="landscape-warning">
+    <div class="warning-content">
+      <div class="rotate-icon"></div>
+      <div class="stars-bg"></div>
+    </div>
+  </div>
+  <div id="dark-overlay"></div>
+  <div id="info"></div>
+  <div id="castle-hint">✨ Chạm vào quả cầu để bước vào điều bất ngờ nha bé ✨</div>
+  <div id="zoom-ui"><button id="zoom-in" aria-label="Phóng to">+</button><button id="zoom-out" aria-label="Thu nhỏ">&minus;</button></div>
+  <audio id="bg-music" autoplay loop preload="auto" playsinline>
+  <source src="./style/Music.mp3" type="audio/mpeg" />
+  </audio>
+  <script>
+  // Nhạc nền: trình duyệt chặn tự phát âm thanh cho tới khi người xem tương tác,
+  // nên lần chạm / click / bấm phím đầu tiên (BẤT KỲ chỗ nào trên trang) sẽ bật nhạc.
+  // Script này độc lập với three.js nên vẫn chạy kể cả khi CDN tải chậm hoặc lỗi.
+  (function () {
+    var audio = document.getElementById('bg-music');
+    if (!audio) return;
+    audio.loop = true;
+    audio.volume = 1.0;
+    var started = false;
+    var EVENTS = ['pointerdown', 'mousedown', 'pointerup', 'touchend', 'click', 'keydown'];
+
+    function cleanup() {
+      EVENTS.forEach(function (ev) { document.removeEventListener(ev, tryPlay, true); });
+    }
+    function tryPlay() {
+      if (started) return;
+      var p = audio.play();
+      if (p && typeof p.then === 'function') {
+        p.then(function () { started = true; cleanup(); })
+         .catch(function () { /* bị chặn: giữ listener, thử lại ở lần chạm kế tiếp */ });
+      } else {
+        started = !audio.paused; if (started) cleanup();
+      }
+    }
+
+    EVENTS.forEach(function (ev) { document.addEventListener(ev, tryPlay, true); });
+    tryPlay();                  // nếu trình duyệt cho phép thì phát ngay khi tải trang
+    window.startBgMusic = tryPlay;
+  })();
+  </script>
+  <script type="module" src="./style/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,335 @@
+/* =====================================================================
+   LÂU ĐÀI YÊU THƯƠNG – giao diện khung, cánh cửa, nhân vật, thẻ lời chúc
+   (logic nằm ở castle.js)
+   ===================================================================== */
+
+/* style.css đặt "overflow:hidden" cho mọi phần tử -> trả lại bình thường trong khung lâu đài */
+#castle-modal, #castle-modal * { overflow: visible; }
+#castle-modal .castle-viewport,
+#castle-modal .cdoor-hole,
+#castle-modal .cw-text { overflow: hidden; }
+
+/* ---------- Gợi ý "chạm vào quả cầu" ngoài vũ trụ ---------- */
+#castle-hint {
+  position: fixed; left: 50%; bottom: max(28px, env(safe-area-inset-bottom));
+  transform: translate(-50%, 14px); z-index: 31;
+  padding: 11px 22px; border-radius: 999px; white-space: nowrap;
+  font: 600 15px/1.2 'Quicksand', system-ui, 'Segoe UI', sans-serif; letter-spacing: .3px;
+  color: #ffe6f1; background: rgba(62, 14, 54, .55);
+  border: 1px solid rgba(255, 170, 205, .5);
+  box-shadow: 0 0 26px rgba(255, 100, 160, .35), inset 0 0 14px rgba(255, 150, 200, .15);
+  opacity: 0; pointer-events: none; transition: opacity .9s, transform .9s;
+}
+#castle-hint.show { opacity: 1; transform: translate(-50%, 0); animation: hintPulse 2.6s ease-in-out infinite; }
+@keyframes hintPulse { 50% { box-shadow: 0 0 40px rgba(255, 110, 170, .65), inset 0 0 18px rgba(255, 150, 200, .25); } }
+body.castle-open #castle-hint, body.castle-open #zoom-ui { opacity: 0 !important; pointer-events: none !important; }
+
+/* con trỏ trái tim to hơn khi rê vào quả cầu */
+body.planet-hover #container canvas {
+  cursor: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='46' viewBox='0 0 24 24'%3E%3Cpath d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z' fill='%23ff2f55' stroke='%23ffffff' stroke-width='1.1' stroke-linejoin='round'/%3E%3Cpath d='M6.1 7.7c.55-1.35 1.95-2.1 3.3-1.65' fill='none' stroke='%23ffffff' stroke-opacity='.8' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E") 23 23, pointer !important;
+}
+
+/* ---------- Lớp phủ + khung ---------- */
+.castle-modal {
+  position: fixed; inset: 0; z-index: 1000; display: none;
+  align-items: center; justify-content: center;
+  font-family: 'Quicksand', system-ui, 'Segoe UI', sans-serif;
+  -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+}
+.castle-modal.on { display: flex; }
+.castle-backdrop {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, rgba(40, 8, 52, .72) 0%, rgba(8, 2, 18, .94) 100%);
+  opacity: 0; transition: opacity .5s;
+}
+.castle-modal.show .castle-backdrop { opacity: 1; }
+
+.castle-frame {
+  position: relative;
+  width: min(96vw, 1480px); height: min(92vh, 880px);
+  border-radius: 22px;
+  opacity: 0; transform: scale(.5); filter: brightness(2.2) saturate(1.4);
+  transition: opacity .45s ease, transform .65s cubic-bezier(.18, .95, .25, 1.12), filter .8s ease;
+  box-shadow: 0 0 0 2px #3a2208, 0 0 70px 18px rgba(255, 110, 170, .35), 0 40px 90px rgba(0, 0, 0, .75);
+}
+.castle-modal.show .castle-frame { opacity: 1; transform: scale(1); filter: none; }
+
+/* viền vàng kim loại */
+.castle-frame::before {
+  content: ''; position: absolute; inset: -15px; border-radius: 32px; padding: 13px; pointer-events: none; z-index: 5;
+  background: conic-gradient(from 30deg, #fff1a8, #e6ac3c, #8b5a14, #f9d56e, #fff1a8, #c88d2b, #7e4f10, #ffe08a, #fff1a8);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  filter: drop-shadow(0 0 6px rgba(255, 210, 120, .5));
+}
+.castle-frame::after {   /* đường chỉ mảnh bên trong viền */
+  content: ''; position: absolute; inset: 0; border-radius: 22px; pointer-events: none; z-index: 5;
+  box-shadow: inset 0 0 0 2px rgba(255, 226, 140, .85), inset 0 0 0 5px rgba(90, 50, 8, .6), inset 0 0 60px rgba(20, 0, 40, .55);
+}
+.castle-viewport {
+  position: absolute; inset: 0; border-radius: 22px;
+  background: #0b0620; touch-action: none;
+}
+.castle-stage { position: absolute; left: 0; top: 0; width: 1600px; height: 1000px; transform-origin: 0 0; will-change: transform; }
+.castle-stage > svg { position: absolute; overflow: visible; pointer-events: none; }
+.castle-stage .csky { left: -1500px; top: -1200px; width: 4600px; height: 2400px; }
+.castle-stage .cwalls { left: 0; top: 0; width: 1600px; height: 1000px; }
+
+/* huy hiệu ở các góc + đỉnh khung */
+.cf-orn { position: absolute; z-index: 7; width: 46px; height: 46px; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .55)); }
+.cf-orn.tl { left: -24px; top: -24px; } .cf-orn.tr { right: -24px; top: -24px; }
+.cf-orn.bl { left: -24px; bottom: -24px; } .cf-orn.br { right: -24px; bottom: -24px; }
+.cf-crest { position: absolute; z-index: 7; left: 50%; top: -34px; width: 74px; height: 62px; transform: translateX(-50%); pointer-events: none; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .6)); }
+
+.castle-close {
+  position: absolute; z-index: 9; right: -18px; top: -18px; width: 42px; height: 42px; border-radius: 50%;
+  border: 2px solid #ffe08a; color: #ffe9b0; font: 700 18px/1 'Quicksand', sans-serif;
+  background: radial-gradient(circle at 35% 30%, #c43a6b, #6e1238); box-shadow: 0 4px 14px rgba(0, 0, 0, .6), 0 0 14px rgba(255, 110, 170, .5);
+  transition: transform .2s;
+}
+.castle-close:hover { transform: scale(1.12) rotate(90deg); }
+
+/* ---------- HUD ---------- */
+.castle-vignette { position: absolute; inset: 0; border-radius: 22px; pointer-events: none; z-index: 2;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(10, 0, 30, .55) 100%); }
+.castle-hud { position: absolute; z-index: 4; left: 28px; top: 22px; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; pointer-events: none; }
+.castle-title {
+  padding: 5px 30px 7px; font: 700 20px/1 'Playfair Display', Georgia, serif; letter-spacing: 2px; color: #fff3c8; text-transform: uppercase;
+  background: linear-gradient(180deg, rgba(150, 30, 90, .85), rgba(80, 14, 60, .85));
+  border: 1.5px solid #f2c765; border-radius: 4px 4px 18px 18px; text-shadow: 0 0 10px rgba(255, 190, 220, .8), 0 2px 2px #3a0b2a;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .5);
+}
+.castle-progress { display: flex; gap: 5px; padding: 4px 11px; border-radius: 999px; background: rgba(30, 8, 50, .55); border: 1px solid rgba(255, 200, 120, .35); }
+.castle-progress i { font-style: normal; font-size: 13px; line-height: 1; color: rgba(255, 255, 255, .22); transition: color .5s, text-shadow .5s, transform .5s; }
+.castle-progress i.on { color: #ff5c92; text-shadow: 0 0 8px #ff7fb0, 0 0 14px rgba(255, 90, 150, .8); transform: scale(1.18); }
+
+.castle-hint {
+  position: absolute; z-index: 4; left: 50%; bottom: 16px; transform: translateX(-50%);
+  max-width: 92%; padding: 8px 18px; border-radius: 999px; text-align: center;
+  font: 600 13.5px/1.35 'Quicksand', sans-serif; color: #ffe9f3; background: rgba(40, 8, 52, .62); border: 1px solid rgba(255, 190, 220, .35);
+  transition: opacity .7s; pointer-events: none;
+}
+.castle-hint.gone { opacity: 0; }
+.castle-hint b { color: #ffd36b; }
+
+/* ---------- Thẻ lời chúc ---------- */
+.castle-wish {
+  position: absolute; z-index: 6; left: 50%; bottom: 18px; width: min(560px, 92%);
+  display: flex; gap: 14px; align-items: center; padding: 14px 20px 14px 14px; border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 249, 234, .97), rgba(255, 231, 240, .96));
+  border: 2px solid #e8b64d; box-shadow: 0 0 0 3px rgba(120, 70, 10, .55), 0 14px 34px rgba(0, 0, 0, .55), 0 0 36px rgba(255, 150, 200, .5);
+  opacity: 0; transform: translate(-50%, 24px) scale(.96); pointer-events: none;
+  transition: opacity .45s, transform .55s cubic-bezier(.2, .9, .3, 1.2);
+}
+.castle-wish.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.castle-wish.show ~ .castle-hint, .castle-modal.wishing .castle-hint { opacity: 0; }
+.cw-photo {
+  /* Khung polaroid TỰ CO GIÃN theo từng ảnh: ảnh dọc -> khung dọc, ảnh vuông -> khung vuông, ảnh ngang -> khung ngang.
+     --cw-box = cạnh tối đa của vùng ảnh (muốn khung to hơn thì tăng số này). */
+  --cw-box: 124px;
+  flex: none; position: relative; padding: 5px 5px 17px; background: #fffdf8; border-radius: 3px;
+  transform: rotate(-4deg); box-shadow: 0 5px 14px rgba(60, 10, 40, .45), 0 0 0 1px rgba(160, 110, 40, .35);
+}
+.cw-photo img {
+  display: block; width: auto; height: auto; max-width: var(--cw-box); max-height: var(--cw-box);
+  object-fit: contain; background: #f3e4ea;
+  overflow: hidden;   /* quan trọng: ở trên #castle-modal * đặt overflow:visible nên phải chặn lại, nếu không ảnh sẽ tràn ra ngoài khung */
+}
+.cw-icon {
+  position: absolute; right: -13px; bottom: -13px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 19px; transform: rotate(4deg);
+  background: radial-gradient(circle at 35% 30%, #fff, var(--cwc, #ffc2d9)); border: 2.5px solid #e8b64d; box-shadow: 0 0 14px var(--cwc, #ff9ec3);
+}
+.cw-body { min-width: 0; flex: 1; }
+.cw-title { font: 800 12.5px/1 'Playfair Display', Georgia, serif; letter-spacing: 2.4px; text-transform: uppercase; color: #a3365f; margin-bottom: 5px; }
+.cw-text { position: relative; font: 600 23px/1.28 'Dancing Script', 'Segoe Script', 'Brush Script MT', cursive; color: #4e1634; }
+.cw-ghost { visibility: hidden; }
+.cw-typed { position: absolute; left: 0; top: 0; right: 0; }
+.cw-extra { margin-top: 6px; font: 700 12px/1.3 'Quicksand', sans-serif; color: #c0396b; display: none; }
+.castle-wish.finale .cw-extra { display: block; }
+.castle-wish::before, .castle-wish::after { content: '✦'; position: absolute; color: #f3c556; font-size: 15px; text-shadow: 0 0 8px #ffd36b; animation: twinkle 1.8s ease-in-out infinite; }
+.castle-wish::before { left: -9px; top: -9px; } .castle-wish::after { right: -9px; bottom: -9px; animation-delay: .9s; }
+@keyframes twinkle { 50% { opacity: .25; transform: scale(.6) rotate(40deg); } }
+
+/* ---------- Nút điều khiển cảm ứng ---------- */
+.castle-pad { position: absolute; z-index: 6; left: 0; right: 0; bottom: 14px; display: none; justify-content: space-between; padding: 0 16px; pointer-events: none; }
+.castle-pad .grp { display: flex; gap: 10px; pointer-events: auto; }
+.castle-pad button {
+  width: 54px; height: 54px; border-radius: 50%; border: 2px solid rgba(255, 224, 138, .8); color: #ffeab4; font-size: 22px; line-height: 1;
+  background: radial-gradient(circle at 35% 30%, rgba(190, 50, 105, .85), rgba(84, 14, 54, .85)); box-shadow: 0 4px 12px rgba(0, 0, 0, .5);
+  touch-action: none; -webkit-tap-highlight-color: transparent;
+}
+.castle-pad button.down { transform: scale(.9); filter: brightness(1.4); }
+.castle-modal.touch .castle-pad { display: flex; }
+.castle-modal.touch .castle-hint { bottom: 82px; }
+.castle-modal.touch .castle-wish { bottom: 82px; }
+
+/* ---------- Bầu trời ---------- */
+.cstar { animation: cstarTw 3.2s ease-in-out infinite; }
+@keyframes cstarTw { 50% { opacity: .25; } }
+.csky-hearts { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
+.csky-hearts i {
+  position: absolute; font-style: normal; color: #ff7fae; opacity: 0; text-shadow: 0 0 10px rgba(255, 110, 170, .9);
+  animation: skyHeart var(--d, 12s) linear infinite; animation-delay: var(--dl, 0s);
+}
+@keyframes skyHeart {
+  0% { transform: translate(0, 0) scale(.6); opacity: 0; }
+  12% { opacity: .75; }
+  60% { transform: translate(var(--sx, 20px), -320px) scale(1); opacity: .55; }
+  100% { transform: translate(calc(var(--sx, 20px) * -1), -620px) scale(.8); opacity: 0; }
+}
+.flame { transform-box: fill-box; transform-origin: 50% 100%; animation: flame .5s ease-in-out infinite alternate; }
+@keyframes flame { from { transform: scale(1, 1) skewX(-4deg); opacity: .95; } to { transform: scale(.88, 1.14) skewX(5deg); opacity: 1; } }
+.glowp { animation: glowp 2.2s ease-in-out infinite alternate; }
+@keyframes glowp { from { opacity: .75; } to { opacity: 1; } }
+.flag { transform-box: fill-box; transform-origin: 0 50%; animation: flag 1.6s ease-in-out infinite alternate; }
+@keyframes flag { from { transform: skewY(-7deg) scaleX(1); } to { transform: skewY(7deg) scaleX(.9); } }
+.pend { transform-box: fill-box; transform-origin: 50% 0; animation: pend 2.4s ease-in-out infinite alternate; }
+@keyframes pend { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+.water { stroke-dasharray: 5 7; animation: water 1.1s linear infinite; }
+@keyframes water { to { stroke-dashoffset: -24; } }
+
+/* ---------- Cánh cửa ---------- */
+.cdoor { position: absolute; z-index: 3; isolation: isolate; }
+.cdoor-medal {
+  position: absolute; left: 50%; top: -30px; width: 28px; height: 28px; margin-left: -14px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 15px; line-height: 1; z-index: 3;
+  background: radial-gradient(circle at 35% 30%, #fff8dc, #e9bd55 70%, #a9741c); border: 2px solid #8a5a14;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, .5); filter: grayscale(.55) brightness(.85); transition: filter .6s, box-shadow .6s, transform .6s;
+}
+.cdoor.seen .cdoor-medal { filter: none; box-shadow: 0 0 0 2px var(--c1), 0 0 14px 2px var(--c1); }
+.cdoor.open .cdoor-medal { transform: translateY(-4px) scale(1.2); filter: none; box-shadow: 0 0 0 2px var(--c1), 0 0 20px 5px var(--c1); }
+.cdoor.big .cdoor-medal { top: -36px; width: 34px; height: 34px; margin-left: -17px; font-size: 19px; }
+.cdoor-frame {
+  position: absolute; inset: 0; padding: 6px 6px 0; border-radius: 999px 999px 0 0;
+  background: linear-gradient(160deg, #fff0a6 0%, #e3a93a 40%, #8d5b14 70%, #f4cf6a 100%);
+  box-shadow: 0 0 0 3px #4a2a08, 0 0 0 5px rgba(255, 228, 150, .55), 0 6px 14px rgba(0, 0, 0, .55), 0 0 0 0 var(--c1);
+  transition: box-shadow .5s;
+}
+.cdoor.near .cdoor-frame { box-shadow: 0 0 0 3px #4a2a08, 0 0 0 5px rgba(255, 228, 150, .8), 0 6px 14px rgba(0, 0, 0, .55), 0 0 22px 4px var(--c1); }
+.cdoor.open .cdoor-frame { box-shadow: 0 0 0 3px #4a2a08, 0 0 0 5px #fff1b0, 0 6px 14px rgba(0, 0, 0, .55), 0 0 40px 10px var(--c1); }
+.cdoor-frame::before {    /* đá đỉnh vòm */
+  content: ''; position: absolute; left: 50%; top: -9px; width: 14px; height: 14px; margin-left: -7px; transform: rotate(45deg);
+  background: linear-gradient(135deg, #fff3b4, #d29a2e); border: 1.5px solid #6e4410; border-radius: 2px;
+}
+.cdoor-hole { position: relative; width: 100%; height: 100%; border-radius: 999px 999px 0 0; background: #1a0c24; perspective: 520px; box-shadow: inset 0 0 12px rgba(0, 0, 0, .8); }
+.cdoor-glow { position: absolute; inset: -20%; background: radial-gradient(circle at 50% 55%, #fff6cf 0%, var(--c1) 45%, transparent 75%); opacity: 0; transition: opacity .8s; }
+.cdoor.open .cdoor-glow { opacity: .9; }
+.cdoor-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.18); filter: brightness(.4); transition: opacity .9s .15s, transform 2.4s ease-out, filter 1.2s .15s; }
+.cdoor.open .cdoor-photo { opacity: 1; transform: scale(1); filter: brightness(1.04) saturate(1.08); }
+.cdoor-hole::after {  /* viền sáng bên trong ô cửa khi mở */
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 2px rgba(255, 238, 170, 0), inset 0 0 18px rgba(255, 235, 170, 0); transition: box-shadow .8s;
+}
+.cdoor.open .cdoor-hole::after { box-shadow: inset 0 0 0 2px rgba(255, 238, 170, .9), inset 0 0 18px rgba(255, 235, 170, .55); }
+
+.cdoor-leaf {
+  position: absolute; top: 0; bottom: 0; width: 50.5%;
+  background:
+    radial-gradient(circle at 50% 6%, rgba(255, 230, 150, .0) 0, transparent 0),
+    linear-gradient(to bottom, transparent 16%, #2c1c18 16% 21%, transparent 21% 72%, #2c1c18 72% 77%, transparent 77%),
+    repeating-linear-gradient(90deg, #8a4f2c 0 7px, #7a4326 7px 8px, #6d3a21 8px 14px, #804a29 14px 15px);
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, .55), inset 0 0 0 1.5px rgba(255, 214, 120, .55);
+  transition: transform 1.05s cubic-bezier(.5, .05, .25, 1), filter 1.05s;
+}
+.cdoor-leaf.l { left: 0; transform-origin: 0 50%; border-radius: 999px 0 0 0; }
+.cdoor-leaf.r { right: 0; transform-origin: 100% 50%; border-radius: 0 999px 0 0; }
+.cdoor.open .cdoor-leaf.l { transform: rotateY(104deg); filter: brightness(.55); }
+.cdoor.open .cdoor-leaf.r { transform: rotateY(-104deg); filter: brightness(.55); }
+.cdoor-leaf i {  /* trái tim + núm cửa */
+  position: absolute; top: 46%; font-style: normal; font-size: 15px; line-height: 1; color: var(--c1); text-shadow: 0 0 6px var(--c1), 0 0 2px #fff;
+  animation: heartbeat 1.7s ease-in-out infinite;
+}
+.cdoor-leaf.l i { right: 4px; } .cdoor-leaf.r i { left: 4px; }
+.cdoor-leaf::after { content: ''; position: absolute; top: 55%; width: 5px; height: 5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6c4, #c6902a); }
+.cdoor-leaf.l::after { right: 4px; } .cdoor-leaf.r::after { left: 4px; }
+@keyframes heartbeat { 0%, 100% { transform: scale(1); } 14% { transform: scale(1.22); } 28% { transform: scale(1); } 42% { transform: scale(1.14); } }
+
+.cdoor::before {  /* tia sáng khi cửa mở */
+  content: ''; position: absolute; left: 50%; top: 50%; width: 330px; height: 330px; margin: -165px 0 0 -165px; z-index: -1; pointer-events: none;
+  background: repeating-conic-gradient(rgba(255, 238, 190, .34) 0 5deg, transparent 5deg 22deg);
+  -webkit-mask-image: radial-gradient(circle, #000 12%, transparent 66%); mask-image: radial-gradient(circle, #000 12%, transparent 66%);
+  opacity: 0; transform: scale(.4) rotate(0deg); transition: opacity .8s, transform 1.2s;
+}
+.cdoor.open::before { opacity: 1; transform: scale(1) rotate(40deg); animation: rays 14s linear infinite; }
+@keyframes rays { to { transform: scale(1) rotate(400deg); } }
+.cdoor.big .cdoor-frame { padding: 8px 8px 0; box-shadow: 0 0 0 3px #4a2a08, 0 0 0 7px #f3cf74, 0 0 0 9px #6a4210, 0 8px 18px rgba(0, 0, 0, .6); }
+.cdoor.big .cdoor-leaf i { font-size: 21px; }
+
+/* ---------- Cầu thang: lớp trước + lan can (nhân vật đi giữa hai lớp này) ---------- */
+.castle-stage .cst-a { z-index: 4; }
+.castle-stage .cst-b { z-index: 6; }
+
+/* ---------- Nhân vật: nàng công chúa ----------
+   z=7  : đi trên sàn (đứng trước cả cầu thang)
+   z=5  : leo ở nửa vòng phía TRƯỚC (đi giữa bậc thang và lan can)
+   z=1  : leo ở nửa vòng phía SAU (bị cột trụ + dải đá phía trước che) */
+.cdoors { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.chero { position: absolute; left: 0; top: 0; z-index: 7; width: 64px; height: 96px; margin: -96px 0 0 -32px; pointer-events: none; will-change: transform; }
+.chero.climbing { z-index: 5; }
+.chero.climbing.behind { z-index: 1; }
+.chero-flip { width: 100%; height: 100%; }
+.chero-flip { transition: filter .35s ease; }   /* lật người do JS điều khiển (quay từ từ) */
+.chero.behind .chero-flip { filter: brightness(.72) saturate(.85); }
+.chero svg { width: 100%; height: 100%; overflow: visible; }
+.chero .h-bob { transform-origin: 32px 90px; }   /* thở + bước đi: castle.js (animateHero) */
+.chero .h-star { animation: twinkle 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.chero .h-star.s2 { animation-delay: .8s; }
+
+.chero .h-arm-b { transform-origin: 20.4px 46.6px; } .chero .h-arm-f { transform-origin: 43.6px 46.6px; }
+.chero .h-skirt { transform-origin: 32px 56px; }
+.chero .h-hair { transform-origin: 32px 22px; }
+.chero .h-head { transform-origin: 32px 40px; }
+/* dáng đi / leo cầu thang: castle.js → animateHero() tính từng khung hình để chuyển động mượt, thướt tha */
+
+/* ---------- Hiệu ứng nổ trái tim / lấp lánh ---------- */
+.cfx { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 8; pointer-events: none; }
+.cfx i { position: absolute; font-style: normal; line-height: 1; margin: -8px 0 0 -8px; animation: burst 1.5s cubic-bezier(.15, .7, .3, 1) forwards; animation-delay: var(--dl, 0ms); opacity: 0; text-shadow: 0 0 8px currentColor; }
+@keyframes burst {
+  0% { transform: translate(0, 0) scale(.3) rotate(0); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(var(--sc, 1)) rotate(var(--r)); opacity: 0; }
+}
+
+/* ---------- Màn hình nhỏ ---------- */
+@media (max-width: 720px), (max-height: 520px) {
+  .castle-frame { width: 97vw; height: 94vh; border-radius: 16px; }
+  .castle-frame::before { inset: -11px; padding: 9px; border-radius: 24px; }
+  .castle-viewport, .castle-vignette, .castle-frame::after { border-radius: 16px; }
+  .cf-orn { width: 34px; height: 34px; } .cf-orn.tl { left: -16px; top: -16px; } .cf-orn.tr { right: -16px; top: -16px; }
+  .cf-orn.bl { left: -16px; bottom: -16px; } .cf-orn.br { right: -16px; bottom: -16px; }
+  .cf-crest { width: 56px; height: 47px; top: -26px; }
+  .castle-close { right: -10px; top: -10px; width: 36px; height: 36px; font-size: 16px; }
+  .castle-title { font-size: 14px; padding: 4px 18px 5px; letter-spacing: 1.2px; }
+  .castle-hud { left: 14px; top: 34px; gap: 5px; }
+  .castle-progress { padding: 3px 8px; gap: 3px; } .castle-progress i { font-size: 11px; }
+  .castle-hint { font-size: 12px; padding: 6px 12px; }
+  .castle-wish { padding: 10px 14px 10px 12px; gap: 14px; bottom: 12px; }
+  .cw-photo { --cw-box: 92px; padding: 4px 4px 13px; } .cw-icon { width: 28px; height: 28px; font-size: 15px; right: -10px; bottom: -10px; }
+  .cw-text { font-size: 19px; } .cw-title { font-size: 11px; letter-spacing: 1.6px; }
+  .castle-pad button { width: 48px; height: 48px; }
+}
+@media (max-height: 520px) {
+  .castle-title { font-size: 12px; } .castle-progress { display: none; }
+  .castle-hud { top: 10px; left: 12px; }
+  .cw-text { font-size: 17px; line-height: 1.2; } .castle-wish { padding: 8px 12px 8px 10px; } .cw-photo { --cw-box: 70px; padding: 3px 3px 11px; }
+  .castle-modal.touch .castle-wish { bottom: 12px; width: min(560px, 62%); }
+  .castle-modal.touch .castle-hint { bottom: 12px; }
+}
+
+/* ---------- Cánh cửa lớn trên cùng: khóa cho tới khi mở hết các cửa khác ---------- */
+.cdoor.locked .cdoor-frame { filter: grayscale(.85) brightness(.62); }
+.cdoor.locked .cdoor-medal { filter: grayscale(1) brightness(.6); }
+.cdoor-lock { display: none; position: absolute; left: 50%; top: 24%; z-index: 5; transform: translate(-50%, -50%); font-size: 30px; line-height: 1; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .8)); pointer-events: none; }
+.cdoor.locked .cdoor-lock { display: block; animation: lockFloat 2.4s ease-in-out infinite; }
+@keyframes lockFloat { 50% { transform: translate(-50%, -56%); } }
+.cdoor.shake { animation: lockShake .5s; }
+@keyframes lockShake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+.cdoor.unlocked .cdoor-frame { animation: unlockGlow 1.6s ease-out 1; }
+@keyframes unlockGlow { 0% { filter: brightness(2.2); } 100% { filter: none; } }
+.castle-lock {
+  position: absolute; left: 50%; top: 104px; z-index: 12; transform: translate(-50%, -12px); padding: 9px 18px; border-radius: 16px; text-align: center;
+  font: 700 14px/1.35 'Quicksand', system-ui, sans-serif; color: #fff; background: rgba(60, 12, 50, .82); border: 1px solid rgba(255, 200, 120, .55);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .45); opacity: 0; pointer-events: none; transition: opacity .35s, transform .35s;
+}
+.castle-lock small { font-weight: 600; font-size: 12px; color: #ffe2a8; }
+.castle-lock b { color: #ffd36b; }
+.castle-lock.show { opacity: 1; transform: translate(-50%, 0); }
